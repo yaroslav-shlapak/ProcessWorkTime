@@ -31,9 +31,9 @@ import org.jfree.chart.JFreeChart;
  */
 public class FileChooser extends JPanel {
 	static private final String newline = "\n";
-	static final String defaultOpenFilePath = 
+	private static final String defaultOpenFilePath = 
 			"C:\\Users\\y.shlapak\\Google Drive\\documents\\worked_hours.txt";
-	static final String defaultSaveFilePath = 
+	private static final String defaultSaveFilePath = 
 			"C:\\Users\\y.shlapak\\Google Drive\\documents\\worked_hours_result.txt";
 	JButton openButton, saveButton, processButton;
 	JTextArea log;
@@ -41,14 +41,16 @@ public class FileChooser extends JPanel {
 	JFileChooser fc;
 	private File openFile, saveFile;
 	Histogram hist;
-	JFreeChart chart;
     ChartPanel histPanel;
+    XYChart graph;
+    ChartPanel graphPanel;
 	
 
 	public FileChooser() {
 		super(new BorderLayout());
 		JPanel openSavePanel = new JPanel(new GridLayout(2, 2));
 		JPanel buttonTextPanel = new JPanel(new GridLayout(3, 1));
+		JPanel chartPanel = new JPanel(new GridLayout(1, 2));
   		// Create the log first, because the action listeners
 		// need to refer to it.
 		log = new JTextArea(5, 5);
@@ -58,7 +60,8 @@ public class FileChooser extends JPanel {
 		
 		//create Listeners
 		ActionListener openButtonListener = new OpenButtonListener();
-		ActionListener sortButtonListener = new SortButtonListener();
+		ActionListener saveButtonListener = new SaveButtonListener();
+		ActionListener processButtonListener = new ProcessButtonListener();
 
 		// Create a file chooser
 		fc = new JFileChooser();
@@ -75,11 +78,10 @@ public class FileChooser extends JPanel {
 		// Graphics Repository (but we extracted it from the jar).
 
 		saveButton = new JButton("Save a file", createImageIcon("/Save16.gif"));
-		saveButton.addActionListener(sortButtonListener);
-		
-		
+		saveButton.addActionListener(saveButtonListener);
+				
 		processButton = new JButton("Process data", createImageIcon("/Sort16.gif"));
-		//processButton.a
+		processButton.addActionListener(processButtonListener);
 
 		// For layout purposes, put the buttons in a separate panel;
         openSavePanel.add(openPathTxt);
@@ -89,14 +91,19 @@ public class FileChooser extends JPanel {
 		buttonTextPanel.add(openSavePanel);
 		buttonTextPanel.add(processButton);
 		buttonTextPanel.add(logScrollPane);
+		
 		hist = new Histogram();
-		chart = hist.configureChart();
-	    histPanel = new ChartPanel(chart);
+	    histPanel = new ChartPanel(hist.getChart());
+	    
+	    graph = new XYChart(openFile.getName());
+	    graphPanel = new ChartPanel(graph.getChart());
+	    chartPanel.add(histPanel);
+	    chartPanel.add(graphPanel);
 	    
 
 		// Add the buttons and the log to this panel.
 		add(buttonTextPanel, BorderLayout.PAGE_START);
-		add(histPanel, BorderLayout.CENTER);
+		add(chartPanel, BorderLayout.CENTER);
 		//add(logScrollPane, BorderLayout.PAGE_END);
 	}
 	
@@ -117,7 +124,7 @@ public class FileChooser extends JPanel {
 		JFrame frame = new JFrame("WorkTimeExtractor");
         //frame.setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         frame.setResizable(false);
-        frame.setSize(200, 150);
+        frame.setSize(1000, 500);
         frame.setLocation(300, 300);
         frame.setVisible(true);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -165,29 +172,41 @@ public class FileChooser extends JPanel {
 		}
 	}
 	
-	private class SortButtonListener implements ActionListener {
+	private class ProcessButtonListener implements ActionListener {
 
 		@Override
-		public void actionPerformed(ActionEvent e) {
-			if (e.getSource() == saveButton) {
+		public void actionPerformed(ActionEvent arg0) {
+			// TODO Auto-generated method stub
+			if (arg0.getSource() == processButton) {
 				String charsetName = "UTF-8";
 				// Read a file
 				BufferedFileIO<String> bufFile = new BufferedFileIO<String>(charsetName);
 				
 				String ls = new String();
 				List<String> vv = new ArrayList<String>();
+				
 				ls = bufFile.readFile(openFile.toPath(), ls);
-				WorkTimeParser wtp = new WorkTimeParser();
-				vv = wtp.parseWorkTime(ls);
-				List<Integer> intTime = new ArrayList<Integer>();
-				intTime = wtp.convertToMinutes();
-				hist.fillChart(intTime, 100);
+				WorkTimeParser wtp = new WorkTimeParser(ls);
+				List<Double> intTime = wtp.getWorkTime();
+				
+				hist.addSeries(openFile.getName(), intTime, 100);
 				histPanel.updateUI();
 				System.out.println(intTime);
 				System.out.println(intTime.get(intTime.size() / 2));
-				log.append("Sorted!" + newline);
+				log.append("Processed!" + newline);
 				log.setCaretPosition(log.getDocument().getLength());
 				System.out.println(vv);
+			}
+		}
+		
+	}
+	
+	
+	private class SaveButtonListener implements ActionListener {
+
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			if (e.getSource() == saveButton) {
 				saveFile();
 			}
 		}
